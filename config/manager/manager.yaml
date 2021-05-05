@@ -31,6 +31,13 @@ spec:
         - --leader-elect
         image: controller:latest
         name: manager
+        env:
+          - name: MAILGUN_DOMAIN
+            value: ${MAILGUN_DOMAIN}
+          - name: MAILGUN_API_KEY
+            value: ${MAILGUN_API_KEY}
+          - name: MAIL_RECIPIENT
+            value: ${MAIL_RECIPIENT}
         securityContext:
           allowPrivilegeEscalation: false
         livenessProbe:

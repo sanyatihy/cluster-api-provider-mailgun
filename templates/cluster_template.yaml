@@ -1,0 +1,21 @@
+apiVersion: cluster.x-k8s.io/v1alpha3
+kind: Cluster
+metadata:
+  name: hello-mailgun
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks: ["192.168.0.0/16"]
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+    kind: MailgunCluster
+    name: hello-mailgun
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha3
+kind: MailgunCluster
+metadata:
+  name: hello-mailgun
+spec:
+  priority: "ExtremelyUrgent"
+  request: "Please make me a cluster, with sugar on top?"
+  requester: "cluster-admin@example.com"
