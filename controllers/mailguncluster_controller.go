@@ -18,9 +18,16 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"github.com/pkg/errors"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/go-logr/logr"
+	"github.com/mailgun/mailgun-go"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/cluster-api/util"
+	patch "sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -30,13 +37,16 @@ import (
 // MailgunClusterReconciler reconciles a MailgunCluster object
 type MailgunClusterReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log       logr.Logger
+	Scheme    *runtime.Scheme
+	Mailgun   mailgun.Mailgun
+	Recipient string
 }
 
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=mailgunclusters,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=mailgunclusters/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=mailgunclusters/finalizers,verbs=update
+//+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -50,7 +60,47 @@ type MailgunClusterReconciler struct {
 func (r *MailgunClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("mailguncluster", req.NamespacedName)
 
-	// your logic here
+	var mgCluster infrastructurev1alpha3.MailgunCluster
+	if err := r.Get(ctx, req.NamespacedName, &mgCluster); err != nil {
+		// 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+		if apierrors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
+	}
+
+	cluster, err := util.GetOwnerCluster(ctx, r.Client, mgCluster.ObjectMeta)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if cluster == nil {
+		return ctrl.Result{}, fmt.Errorf("failed to retrieve cluster: %+v", mgCluster.ObjectMeta)
+	}
+
+	if mgCluster.Status.MessageID != nil {
+		// We already sent a message, so skip reconciliation
+		return ctrl.Result{}, nil
+	}
+
+	subject := fmt.Sprintf("[%s] New Cluster %s requested", mgCluster.Spec.Priority, cluster.Name)
+	body := fmt.Sprintf("Hello! One cluster please.\n\n%s\n", mgCluster.Spec.Request)
+
+	msg := mailgun.NewMessage(mgCluster.Spec.Requester, subject, body, r.Recipient)
+	_, msgID, err := r.Mailgun.Send(msg)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// patch from sigs.k8s.io/cluster-api/util/patch
+	helper, err := patch.NewHelper(&mgCluster, r.Client)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	mgCluster.Status.MessageID = &msgID
+	if err := helper.Patch(ctx, &mgCluster); err != nil {
+		return ctrl.Result{}, errors.Wrapf(err, "couldn't patch cluster %q", mgCluster.Name)
+	}
 
 	return ctrl.Result{}, nil
 }
