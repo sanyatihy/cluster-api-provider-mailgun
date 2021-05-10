@@ -1,6 +1,9 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= gcr.io/init-238407/cluster-api-provider-mailgun-controller-amd64:latest
+GCP_PROJECT ?= $(shell gcloud config get-value project)
+REGISTRY ?= gcr.io/$(GCP_PROJECT)
+export CONTROLLER_IMG ?= $(REGISTRY)/cluster-api-provider-mailgun-controller-amd64
+IMG ?= $(REGISTRY)/cluster-api-provider-mailgun-controller-amd64:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
@@ -78,7 +81,7 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+#	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | envsubst | kubectl apply -f -
 
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
