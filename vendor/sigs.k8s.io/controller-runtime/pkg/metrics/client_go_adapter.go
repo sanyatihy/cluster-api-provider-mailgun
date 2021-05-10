@@ -17,7 +17,6 @@ limitations under the License.
 package metrics
 
 import (
-	"context"
 	"net/url"
 	"time"
 
@@ -131,10 +130,7 @@ func registerClientMetrics() {
 	Registry.MustRegister(requestResult)
 
 	// register the metrics with client-go
-	clientmetrics.Register(clientmetrics.RegisterOpts{
-		RequestLatency: &latencyAdapter{metric: requestLatency},
-		RequestResult:  &resultAdapter{metric: requestResult},
-	})
+	clientmetrics.Register(&latencyAdapter{metric: requestLatency}, &resultAdapter{metric: requestResult})
 }
 
 // registerReflectorMetrics sets up reflector (reconcile) loop metrics
@@ -163,7 +159,7 @@ type latencyAdapter struct {
 	metric *prometheus.HistogramVec
 }
 
-func (l *latencyAdapter) Observe(_ context.Context, verb string, u url.URL, latency time.Duration) {
+func (l *latencyAdapter) Observe(verb string, u url.URL, latency time.Duration) {
 	l.metric.WithLabelValues(verb, u.String()).Observe(latency.Seconds())
 }
 
@@ -171,7 +167,7 @@ type resultAdapter struct {
 	metric *prometheus.CounterVec
 }
 
-func (r *resultAdapter) Increment(_ context.Context, code, method, host string) {
+func (r *resultAdapter) Increment(code, method, host string) {
 	r.metric.WithLabelValues(code, method, host).Inc()
 }
 

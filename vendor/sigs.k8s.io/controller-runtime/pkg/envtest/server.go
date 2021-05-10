@@ -23,8 +23,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/internal/testing/integration"
 
@@ -62,22 +62,14 @@ const (
 	defaultKubebuilderControlPlaneStopTimeout  = 20 * time.Second
 )
 
-// getBinAssetPath returns a path for binary from the following list of locations,
-// ordered by precedence:
-// 0. KUBEBUILDER_ASSETS
-// 1. Environment.BinaryAssetsDirectory
-// 2. The default path, "/usr/local/kubebuilder/bin"
-func (te *Environment) getBinAssetPath(binary string) string {
-	valueFromEnvVar := os.Getenv(envKubebuilderPath)
-	if valueFromEnvVar != "" {
-		return filepath.Join(valueFromEnvVar, binary)
+// Default binary path for test framework
+func defaultAssetPath(binary string) string {
+	assetPath := os.Getenv(envKubebuilderPath)
+	if assetPath == "" {
+		assetPath = defaultKubebuilderPath
 	}
+	return filepath.Join(assetPath, binary)
 
-	if te.BinaryAssetsDirectory != "" {
-		return filepath.Join(te.BinaryAssetsDirectory, binary)
-	}
-
-	return filepath.Join(defaultKubebuilderPath, binary)
 }
 
 // ControlPlane is the re-exported ControlPlane type from the internal integration package
@@ -103,7 +95,7 @@ type Environment struct {
 	// CRDInstallOptions are the options for installing CRDs.
 	CRDInstallOptions CRDInstallOptions
 
-	// WebhookInstallOptions are the options for installing webhooks.
+	// CRDInstallOptions are the options for installing webhooks.
 	WebhookInstallOptions WebhookInstallOptions
 
 	// ErrorIfCRDPathMissing provides an interface for the underlying
@@ -114,18 +106,14 @@ type Environment struct {
 	// CRDs is a list of CRDs to install.
 	// If both this field and CRDs field in CRDInstallOptions are specified, the
 	// values are merged.
-	CRDs []client.Object
+	CRDs []runtime.Object
 
 	// CRDDirectoryPaths is a list of paths containing CRD yaml or json configs.
 	// If both this field and Paths field in CRDInstallOptions are specified, the
 	// values are merged.
 	CRDDirectoryPaths []string
 
-	// BinaryAssetsDirectory is the path where the binaries required for the envtest are
-	// located in the local environment. This field can be overridden by setting KUBEBUILDER_ASSETS.
-	BinaryAssetsDirectory string
-
-	// UseExistingCluster indicates that this environments should use an
+	// UseExisting indicates that this environments should use an
 	// existing kubeconfig, instead of trying to stand up a new control plane.
 	// This is useful in cases that need aggregated API servers and the like.
 	UseExistingCluster *bool
@@ -229,14 +217,14 @@ func (te *Environment) Start() (*rest.Config, error) {
 		}
 
 		if os.Getenv(envKubeAPIServerBin) == "" {
-			te.ControlPlane.APIServer.Path = te.getBinAssetPath("kube-apiserver")
+			te.ControlPlane.APIServer.Path = defaultAssetPath("kube-apiserver")
 		}
 		if os.Getenv(envEtcdBin) == "" {
-			te.ControlPlane.Etcd.Path = te.getBinAssetPath("etcd")
+			te.ControlPlane.Etcd.Path = defaultAssetPath("etcd")
 		}
 		if os.Getenv(envKubectlBin) == "" {
 			// we can't just set the path manually (it's behind a function), so set the environment variable instead
-			if err := os.Setenv(envKubectlBin, te.getBinAssetPath("kubectl")); err != nil {
+			if err := os.Setenv(envKubectlBin, defaultAssetPath("kubectl")); err != nil {
 				return nil, err
 			}
 		}

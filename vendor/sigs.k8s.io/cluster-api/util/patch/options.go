@@ -16,7 +16,7 @@ limitations under the License.
 
 package patch
 
-import clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
+import clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 
 // Option is some configuration that modifies options for a patch request.
 type Option interface {
@@ -36,6 +36,8 @@ type HelperOptions struct {
 
 	// OwnedConditions defines condition types owned by the controller.
 	// In case of conflicts for the owned conditions, the patch helper will always use the value provided by the controller.
+	//
+	// DEPRECATED: Use ForceOverwriteConditions.
 	OwnedConditions []clusterv1.ConditionType
 }
 
@@ -59,6 +61,8 @@ func (w WithStatusObservedGeneration) ApplyToHelper(in *HelperOptions) {
 
 // WithOwnedConditions allows to define condition types owned by the controller.
 // In case of conflicts for the owned conditions, the patch helper will always use the value provided by the controller.
+//
+// DEPRECATED: Use WithForceOverwriteConditions.
 type WithOwnedConditions struct {
 	Conditions []clusterv1.ConditionType
 }

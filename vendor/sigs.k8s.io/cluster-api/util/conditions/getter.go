@@ -19,14 +19,14 @@ package conditions
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha4"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // Getter interface defines methods that a Cluster API object should implement in order to
 // use the conditions package for getting conditions.
 type Getter interface {
-	client.Object
+	controllerutil.Object
 
 	// GetConditions returns the list of conditions for a cluster API object.
 	GetConditions() clusterv1.Conditions
@@ -153,19 +153,14 @@ func summary(from Getter, options ...MergeOption) *clusterv1.Condition {
 	}
 
 	// If it is required to add a step counter only if a subset of condition exists, check if the conditions
-	// in scope are included in this subset or not.
+	// in scope are included in this subset.
 	if mergeOpt.addStepCounterIfOnlyConditionTypes != nil {
 		for _, c := range conditionsInScope {
-			found := false
 			for _, t := range mergeOpt.addStepCounterIfOnlyConditionTypes {
-				if c.Type == t {
-					found = true
+				if c.Type != t {
+					mergeOpt.addStepCounter = false
 					break
 				}
-			}
-			if !found {
-				mergeOpt.addStepCounter = false
-				break
 			}
 		}
 	}

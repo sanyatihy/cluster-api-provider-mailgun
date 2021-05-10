@@ -40,7 +40,7 @@ const (
 
 // +genclient
 // +genclient:nonNamespaced
-// +genclient:onlyVerbs=create
+// +genclient:noVerbs
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // TokenReview attempts to authenticate a token to a known user.
@@ -178,7 +178,7 @@ type BoundObjectReference struct {
 	Kind string `json:"kind,omitempty" protobuf:"bytes,1,opt,name=kind"`
 	// API version of the referent.
 	// +optional
-	APIVersion string `json:"apiVersion,omitempty" protobuf:"bytes,2,opt,name=apiVersion"`
+	APIVersion string `json:"apiVersion,omitempty" protobuf:"bytes,2,opt,name=aPIVersion"`
 
 	// Name of the referent.
 	// +optional
